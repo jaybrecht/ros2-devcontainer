@@ -1,0 +1,37 @@
+{
+    "name": "ros2-jazzy",
+    "dockerComposeFile": "../docker-compose.yml",
+    "service": "ros",
+    "workspaceFolder": "/ws/src",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-python.python",
+                "ms-python.vscode-pylance",
+                "ms-vscode.cmake-tools",
+                "ms-vscode.cpp-devtools",
+                "nonanonno.vscode-ros2"
+            ],
+            "settings": {
+                "python.analysis.extraPaths": [
+                    "/opt/ros/jazzy/lib/python3.12/site-packages/",
+                    "/ws/install/rtr_interfaces/lib/python3.12/site-packages/",
+                    "/ws/src/rtr_core/"
+                ],
+
+                "python.analysis.typeCheckingMode": "basic",
+                "python.analysis.diagnosticSeverityOverrides": {
+                    "reportAttributeAccessIssue": "none",
+                    "reportMissingModuleSource": "none"
+                },
+
+                "cmake.ignoreCMakeListsMissing": true,
+
+                "terminal.integrated.cwd": "/ws",
+                "terminal.integrated.defaultProfile.linux": "zsh",
+
+                "editor.selectionClipboard": false
+            }
+        }
+    }
+}
