@@ -1,0 +1,9 @@
+# GUI apps (rviz, rqt) through the host's X server.
+services:
+  ros:
+    environment:
+      - DISPLAY=${DISPLAY}
+      - XAUTHORITY=/tmp/.Xauthority
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - ${XAUTHORITY}:/tmp/.Xauthority:ro

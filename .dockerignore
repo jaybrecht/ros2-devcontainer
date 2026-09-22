@@ -1,0 +1,10 @@
+# Only what the Dockerfile needs. Source code is mounted at runtime, so
+# excluding it keeps the dependency layer cached until a package.xml or
+# requirements.txt actually changes.
+*
+!zshrc
+!colcon-defaults.yaml
+!src/.gitkeep
+!src/**/package.xml
+!src/**/requirements.txt
+!src/**/COLCON_IGNORE

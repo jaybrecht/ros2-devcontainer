@@ -1,3 +1,0 @@
-string metric_function
-
-SerializedData metric_params

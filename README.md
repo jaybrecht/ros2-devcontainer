@@ -1,109 +1,120 @@
 # ROS 2 Jazzy dev container
 
-A ROS 2 Jazzy container with `src/` mounted from the host, so you edit on the host
-and build/test in the container without rebuilding the image.
+A reusable ROS 2 Jazzy container. This repo holds only the container setup. Your
+project repos are cloned into `src/`, which is mounted into the container. You edit
+on the host and build and test in the container without rebuilding the image.
 
 ## Prerequisites
 
-- Docker Engine and the Compose plugin (`docker compose version`)
+- **Linux:** Docker Engine and the Compose plugin (`docker compose version`). For a
+  GPU, also the NVIDIA driver and the
+  [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html).
+- **Windows 11:** Docker Desktop with the WSL2 backend. For a GPU, a current NVIDIA
+  Windows driver (no toolkit needed). Clone this repo **inside WSL2** (for example
+  `~/` in Ubuntu), not on `C:\`. Bind mounts from the Windows filesystem are very
+  slow, and `colcon build` suffers most.
 
-## Quick start
-
-```bash
-docker compose build          # installs the dependencies of everything in src/
-docker compose up -d          # start the container in the background
-docker compose exec ros bash  # get a shell
-```
-
-Inside the container:
+## Setting up a project
 
 ```bash
-source /opt/ros/jazzy/setup.bash
-colcon build
-source install/setup.bash
+git clone <this repo> my_project_ws
+cd my_project_ws
+git clone <your project repo> src/<project>   # repeat for each repo you need
+cp .env.example .env                          # then pick your options, see below
+docker compose build
+docker compose up -d
+docker compose exec ros zsh
 ```
 
-Stop with `docker compose down`.
+Each clone of this repo is a separate workspace. Compose names the image and
+container after the folder, so several workspaces can run at the same time.
+
+## Options (`.env`)
+
+`.env` is local and not committed. Both `docker compose` and VS Code read it.
+Uncomment one `COMPOSE_FILE` line from `.env.example`:
+
+| Option          | Files                                   |
+| --------------- | --------------------------------------- |
+| Linux           | `docker-compose.yml:compose/linux.yml`  |
+| Linux + GPU     | `...:compose/linux.yml:compose/gpu.yml` |
+| Windows         | `docker-compose.yml:compose/windows.yml`|
+| Windows + GPU   | `...:compose/windows.yml:compose/gpu.yml` |
+
+The separator is `:` on Linux and in WSL, and `;` when you run from PowerShell.
+
+On Linux, set `USER_UID`/`USER_GID` to the output of `id -u`/`id -g`. Files
+created in the container are then owned by you on the host, not by root. On
+Windows, leave them at 1000.
+
+After you change `.env`, run `docker compose build && docker compose up -d --force-recreate`
+(or **Dev Containers: Rebuild Container**).
 
 ## Layout
 
-| Path                 | Purpose                                            |
-| -------------------- | -------------------------------------------------- |
-| `src/`               | Your packages. Mounted to `/ws/src` in the container. |
-| `Dockerfile`         | Base image + `rosdep install`.                     |
-| `docker-compose.yml` | Mount, networking, keeps the container alive.      |
+| Path                        | Purpose                                              |
+| --------------------------- | ---------------------------------------------------- |
+| `src/`                      | Your project repos (git-ignored here). Mounted to `/ws/src`. |
+| `Dockerfile`                | Base image, `rosdep install`, container user.        |
+| `docker-compose.yml`        | Base service: mount, networking, build args.         |
+| `compose/linux.yml`         | GUI through the host X server.                       |
+| `compose/windows.yml`       | GUI through WSLg.                                    |
+| `compose/gpu.yml`           | NVIDIA GPU passthrough.                              |
+| `colcon-defaults.yaml`      | Makes `colcon build` use `--merge-install --symlink-install`. |
+| `.devcontainer/`            | VS Code Dev Containers config.                       |
 
-## Adding a package
+## Adding a dependency
 
-```bash
-docker compose exec ros bash
-source /opt/ros/jazzy/setup.bash
-cd /ws/src
-ros2 pkg create --build-type ament_python my_pkg
-```
-
-**Rebuild the image whenever a `package.xml` changes**, so its new dependencies get
-installed:
+Add it to the package's `package.xml` (a ROS package or a rosdep key like
+`nlohmann-json-dev`) or `requirements.txt`, then rebuild:
 
 ```bash
 docker compose build
 docker compose up -d --force-recreate
 ```
 
-Editing source code needs no rebuild — `src/` is a live mount.
+The build only sees `package.xml` and `requirements.txt` files (see `.dockerignore`),
+so editing source code never triggers a rebuild. For anything rosdep can't express,
+add it to the `Dockerfile`.
 
-## Adding a dependency
-
-Add it to the package's `package.xml` (a ROS package or a rosdep key like
-`nlohmann-json-dev`), then `docker compose build`. For anything rosdep can't express,
-add it to the `Dockerfile` instead.
-
-Don't `apt install` inside a running container — it's lost when the container is
-recreated, and the image drifts from what a rebuild produces.
+Don't `apt install` inside a running container. The package is lost when the
+container is recreated, and the image drifts from what a rebuild produces.
 
 ## Building and testing
 
+Inside the container (the zsh helpers `jazzy` and `sw` source ROS and the workspace):
+
 ```bash
-docker compose exec ros bash -c '
-  source /opt/ros/jazzy/setup.bash &&
-  colcon build &&
-  colcon test &&
-  colcon test-result --verbose'
+jazzy
+colcon build
+sw
+colcon test && colcon test-result --verbose
 ```
 
 ## Things to know
 
-**ROS is not sourced automatically.** Every shell needs
-`source /opt/ros/jazzy/setup.bash` (and `source /ws/install/setup.bash` once you've
-built). This is deliberate — add it to your own `.bashrc` or shell setup if you want it.
-
 **Build artifacts live inside the container.** Only `src/` is mounted, so `build/`,
-`install/`, and `log/` are lost when the container is removed (`docker compose down`)
-and need a fresh `colcon build`. Restarts are fine. To persist them on the host,
-change the volume to `.:/ws`.
-
-**The container user is hardcoded to UID 67851 / GID 36700** to match the host user,
-so files created in the container aren't owned by root. On a different machine or
-user account, update those numbers in the `Dockerfile` (`id -u`, `id -g`) and rebuild.
+`install/`, and `log/` are lost on `docker compose down` and need a fresh
+`colcon build`. Restarts are fine.
 
 **Networking is `host` mode**, so DDS discovery reaches other ROS 2 nodes on the
-machine and the LAN with no extra setup. Set `ROS_DOMAIN_ID` to isolate yourself from
-others on the same network.
+machine and the LAN. On Windows, enable host networking in Docker Desktop
+(Settings → Resources → Network). Even then, "host" is the WSL2 VM, not Windows
+itself.
+
+**Line endings.** `.gitattributes` forces LF, so the zshrc still works when the repo
+is cloned on Windows.
 
 ## VS Code
 
-Install the **Dev Containers** extension, open this folder, and click
-**Reopen in Container** when prompted (or run **Dev Containers: Reopen in Container**
-from the command palette). VS Code builds and starts the container, opens `/ws/src`,
-and installs the Python and Pylance extensions inside it.
+Install the **Dev Containers** extension, open this folder, and run
+**Dev Containers: Reopen in Container**. It uses the same `.env` as
+`docker compose`, because `dockerComposeFile` is an empty list in
+`devcontainer.json`.
 
-Editor settings live in `.devcontainer/devcontainer.json`. Pylance never sources
-`setup.bash`, so every Python path it should resolve must be listed in
-`python.analysis.extraPaths`. When you add an interface package, add its install path
-(after a `colcon build`):
-
-```
-/ws/install/<package>/lib/python3.12/site-packages/
-```
+Pylance never sources `setup.bash`. Because colcon uses merge-install, every
+package you build lands in one path (`/ws/install/lib/python3.12/site-packages/`),
+which is already in `python.analysis.extraPaths`. Run `colcon build` once and
+imports resolve.
 
 After changing `devcontainer.json`, run **Dev Containers: Rebuild Container**.

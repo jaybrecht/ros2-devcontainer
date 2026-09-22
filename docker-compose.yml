@@ -1,21 +1,13 @@
+# Base service. Platform and GPU options are separate overlay files in
+# compose/, chosen by COMPOSE_FILE in .env (see .env.example).
 services:
   ros:
-    build: .
-    container_name: ros2_jazzy
+    build:
+      context: .
+      args:
+        USER_UID: ${USER_UID:-1000}
+        USER_GID: ${USER_GID:-1000}
     network_mode: host
-    environment:
-      - DISPLAY=${DISPLAY}
-      - XAUTHORITY=/tmp/.Xauthority
-      - NVIDIA_DRIVER_CAPABILITIES=all
     volumes:
       - ./src:/ws/src
-      - /tmp/.X11-unix:/tmp/.X11-unix
-      - ${XAUTHORITY}:/tmp/.Xauthority:ro
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
     command: sleep infinity

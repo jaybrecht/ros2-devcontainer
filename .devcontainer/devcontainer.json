@@ -1,6 +1,7 @@
 {
     "name": "ros2-jazzy",
-    "dockerComposeFile": "../docker-compose.yml",
+    // Empty list: use COMPOSE_FILE from .env, same as `docker compose`.
+    "dockerComposeFile": [],
     "service": "ros",
     "workspaceFolder": "/ws/src",
     "customizations": {
@@ -10,13 +11,13 @@
                 "ms-python.vscode-pylance",
                 "ms-vscode.cmake-tools",
                 "ms-vscode.cpp-devtools",
-                "nonanonno.vscode-ros2"
+                "nonanonno.vscode-ros2",
+                "Anthropic.claude-code"
             ],
             "settings": {
                 "python.analysis.extraPaths": [
                     "/opt/ros/jazzy/lib/python3.12/site-packages/",
-                    "/ws/install/rtr_interfaces/lib/python3.12/site-packages/",
-                    "/ws/src/rtr_core/"
+                    "/ws/install/lib/python3.12/site-packages/"
                 ],
 
                 "python.analysis.typeCheckingMode": "basic",

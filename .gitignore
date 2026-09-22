@@ -3,3 +3,7 @@ install/
 log/
 __pycache__/
 *.pyc
+.env
+# Project repos are cloned into src/ and tracked by their own git.
+src/*
+!src/.gitkeep

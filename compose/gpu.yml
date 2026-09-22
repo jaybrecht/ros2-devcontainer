@@ -1,0 +1,13 @@
+# NVIDIA GPU. Needs the NVIDIA Container Toolkit on Linux, or Docker Desktop
+# with the WSL2 backend and a current NVIDIA driver on Windows.
+services:
+  ros:
+    environment:
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

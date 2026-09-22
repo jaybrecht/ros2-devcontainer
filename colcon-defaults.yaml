@@ -1,0 +1,5 @@
+# One shared install/ tree (merge-install) gives Pylance a single site-packages
+# path for every package; symlink-install points it back at the source in src/.
+build:
+  merge-install: true
+  symlink-install: true

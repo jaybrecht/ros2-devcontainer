@@ -1,0 +1,2 @@
+# Keep LF endings on Windows checkouts; zsh can't read a CRLF zshrc.
+* text=auto eol=lf
