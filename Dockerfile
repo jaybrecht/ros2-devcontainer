@@ -30,6 +30,10 @@ RUN userdel -r ubuntu 2>/dev/null || true \
 USER dev
 WORKDIR /ws
 
+# Mount point for the claude-config volume. Creating it here makes Docker give
+# the new volume dev's ownership instead of root's.
+RUN mkdir -p /home/dev/.claude
+
 RUN git clone --depth 1 https://github.com/ohmyzsh/ohmyzsh.git /home/dev/.oh-my-zsh
 COPY --chown=dev:dev zshrc /home/dev/.zshrc
 COPY --chown=dev:dev colcon-defaults.yaml /home/dev/.colcon/defaults.yaml

@@ -8,6 +8,16 @@ services:
         USER_UID: ${USER_UID:-1000}
         USER_GID: ${USER_GID:-1000}
     network_mode: host
+    environment:
+      # Keeps all Claude Code state, including ~/.claude.json, in the volume.
+      - CLAUDE_CONFIG_DIR=/home/dev/.claude
     volumes:
       - ./src:/ws/src
+      - claude-config:/home/dev/.claude
     command: sleep infinity
+
+volumes:
+  # Fixed name (no project prefix), so every workspace on this machine shares
+  # one Claude Code login and it survives rebuilds.
+  claude-config:
+    name: claude-config

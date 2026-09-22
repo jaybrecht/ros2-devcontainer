@@ -112,9 +112,24 @@ Install the **Dev Containers** extension, open this folder, and run
 `docker compose`, because `dockerComposeFile` is an empty list in
 `devcontainer.json`.
 
-Pylance never sources `setup.bash`. Because colcon uses merge-install, every
-package you build lands in one path (`/ws/install/lib/python3.12/site-packages/`),
-which is already in `python.analysis.extraPaths`. Run `colcon build` once and
-imports resolve.
+Pylance never sources `setup.bash`, so it only finds what's in
+`python.analysis.extraPaths`. The default list covers ROS and every interface
+package you build, since merge-install puts them all in
+`/ws/install/lib/python3.12/site-packages/`. It doesn't cover `ament_python`
+packages, which symlink-install leaves in `src/`.
+
+Add those per project in `src/.vscode/settings.json`. It's on the host, so it
+survives rebuilds, and it isn't tracked by this repo. It replaces the whole
+list, so keep the two default entries:
+
+```json
+{
+    "python.analysis.extraPaths": [
+        "/opt/ros/jazzy/lib/python3.12/site-packages/",
+        "/ws/install/lib/python3.12/site-packages/",
+        "/ws/src/<package>/"
+    ]
+}
+```
 
 After changing `devcontainer.json`, run **Dev Containers: Rebuild Container**.
