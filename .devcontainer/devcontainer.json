@@ -4,6 +4,8 @@
     "dockerComposeFile": [],
     "service": "ros",
     "workspaceFolder": "/ws/src",
+    // Adds Isaac Sim paths to src/.vscode/settings.json when /isaac-sim is mounted.
+    "postCreateCommand": "isaacsim-vscode-paths",
     "customizations": {
         "vscode": {
             "extensions": [

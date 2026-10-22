@@ -172,9 +172,11 @@ systemd reload on the host (a known NVIDIA Container Toolkit issue); recreate it
 Isaac Sim ships `.vscode/settings.json` listing every extension folder. On
 container creation, `isaacsim-vscode-paths` (`.devcontainer/isaacsim_vscode_paths.py`,
 copied into the image) rewrites those to `/isaac-sim/...` and merges them into
-`src/.vscode/settings.json`, keeping your other entries. It also adds shims for a
-few extensions that would otherwise break `isaacsim.*` imports in Pylance. Re-run
-it after upgrading Isaac Sim, then restart the Python language server:
+`src/.vscode/settings.json`, keeping your other entries. It leaves out the few
+extensions (e.g. `isaacsim.ros2.control`) that would otherwise break `isaacsim.*`
+imports in Pylance. For the same reason, write
+`from isaacsim.simulation_app import SimulationApp`, not `from isaacsim import ...`.
+Re-run it after upgrading Isaac Sim, then restart the Python language server:
 
 ```bash
 isaacsim-vscode-paths
