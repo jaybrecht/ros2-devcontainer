@@ -1,0 +1,28 @@
+# Host Isaac Sim install, run in the container with /isaac-sim/python.sh.
+# Needs compose/gpu.yml too. Pylance also uses this mount to resolve
+# isaacsim/omni/pxr imports.
+#
+# Isaac Sim writes to kit/cache, kit/data and kit/logs inside its install, so the
+# mount is read-write. The cache dirs (compiled shaders etc.) live on the host so
+# they survive container rebuilds. They must exist on the host first, or Docker
+# creates them owned by root.
+# ipc: host gives the container the host's /dev/shm instead of Docker's 64 MB
+# default, which Isaac Sim and Fast DDS shared memory need.
+services:
+  ros:
+    ipc: host
+    # isaacsim.ros2.control puts Isaac's own Jazzy prefixes ahead of /opt/ros/jazzy at
+    # runtime, so pluginlib loads Isaac's plugins (e.g. libsdformat_urdf_plugin.so). Their
+    # extra deps (libtinyxml2.so.9) are only in these dirs, and the loader only reads
+    # LD_LIBRARY_PATH at process start. Sourcing ROS prepends /opt/ros/jazzy, so system
+    # libraries still win wherever both have one.
+    environment:
+      LD_LIBRARY_PATH: /isaac-sim/exts/isaacsim.ros2.control/jazzy/lib:/isaac-sim/exts/isaacsim.ros2.core/jazzy/lib
+    devices:
+      - /dev/nvidia-modeset
+    volumes:
+      - ${ISAACSIM_ROOT:?set ISAACSIM_ROOT in .env}:/isaac-sim
+      - ${HOME}/.cache/ov:/home/dev/.cache/ov
+      - ${HOME}/.local/share/ov:/home/dev/.local/share/ov
+      - ${HOME}/.nvidia-omniverse:/home/dev/.nvidia-omniverse
+      - ${HOME}/.nv:/home/dev/.nv

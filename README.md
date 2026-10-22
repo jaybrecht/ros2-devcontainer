@@ -40,6 +40,7 @@ Uncomment one `COMPOSE_FILE` line from `.env.example`:
 | Linux + GPU     | `...:compose/linux.yml:compose/gpu.yml` |
 | Windows         | `docker-compose.yml:compose/windows.yml`|
 | Windows + GPU   | `...:compose/windows.yml:compose/gpu.yml` |
+| + Isaac Sim     | append `:compose/isaacsim.yml` and set `ISAACSIM_ROOT` |
 
 The separator is `:` on Linux and in WSL, and `;` when you run from PowerShell.
 
@@ -60,8 +61,9 @@ After you change `.env`, run `docker compose build && docker compose up -d --for
 | `compose/linux.yml`         | GUI through the host X server.                       |
 | `compose/windows.yml`       | GUI through WSLg.                                    |
 | `compose/gpu.yml`           | NVIDIA GPU passthrough.                              |
+| `compose/isaacsim.yml`      | Host Isaac Sim mounted at `/isaac-sim`, with caches. |
 | `colcon-defaults.yaml`      | Makes `colcon build` use `--merge-install --symlink-install`. |
-| `.devcontainer/`            | VS Code Dev Containers config.                       |
+| `.devcontainer/`            | VS Code Dev Containers config, Pylance path script.  |
 
 ## Adding a dependency
 
@@ -133,3 +135,47 @@ list, so keep the two default entries:
 ```
 
 After changing `devcontainer.json`, run **Dev Containers: Rebuild Container**.
+
+## Isaac Sim
+
+Isaac Sim is installed on the host and mounted into the container at
+`/isaac-sim`, where it runs. Set `ISAACSIM_ROOT` in `.env` and add
+`compose/gpu.yml` and `compose/isaacsim.yml` to `COMPOSE_FILE`. In the container:
+
+```bash
+jazzy
+/isaac-sim/python.sh /ws/src/<pkg>/<script>.py
+```
+
+Isaac Sim uses the container's ROS Jazzy (it's always sourced), so your own
+message packages work once the workspace is sourced. The shader caches
+(`~/.cache/ov` and friends) are mounted from the host so they survive rebuilds;
+those directories must exist on the host before the container starts.
+
+To check the setup, run the smoke test (add `--gui` for the window):
+
+```bash
+/isaac-sim/python.sh /ws/src/aprs_testbed/testbed_sim/scripts/isaacsim_smoke_test.py
+```
+
+For the Isaac Sim window, run `/isaac-sim/isaac-sim.sh` for the full editor, or
+start your own script with `SimulationApp({'headless': False})`. The smoke test
+takes `--gui`. Windows go to the host X server through `compose/linux.yml`.
+
+The NVIDIA runtime doesn't add a Vulkan ICD file, so the image adds one for
+`libGLX_nvidia.so.0`, which needs an X display. Without X (for example over SSH,
+or without `compose/linux.yml`), use the EGL one instead:
+`export VK_DRIVER_FILES=$NVIDIA_EGL_ICD`. If `nvidia-smi` in the container fails with
+`Failed to initialize NVML: Unknown Error`, the container lost GPU access after a
+systemd reload on the host (a known NVIDIA Container Toolkit issue); recreate it.
+
+Isaac Sim ships `.vscode/settings.json` listing every extension folder. On
+container creation, `isaacsim-vscode-paths` (`.devcontainer/isaacsim_vscode_paths.py`,
+copied into the image) rewrites those to `/isaac-sim/...` and merges them into
+`src/.vscode/settings.json`, keeping your other entries. It also adds shims for a
+few extensions that would otherwise break `isaacsim.*` imports in Pylance. Re-run
+it after upgrading Isaac Sim, then restart the Python language server:
+
+```bash
+isaacsim-vscode-paths
+```
