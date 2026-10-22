@@ -4,8 +4,13 @@
     "dockerComposeFile": [],
     "service": "ros",
     "workspaceFolder": "/ws/src",
-    // Adds Isaac Sim paths to src/.vscode/settings.json when /isaac-sim is mounted.
-    "postCreateCommand": "isaacsim-vscode-paths",
+    "postCreateCommand": {
+        // Adds Isaac Sim paths to src/.vscode/settings.json when /isaac-sim is mounted.
+        "isaacsim": "isaacsim-vscode-paths",
+        // CLAUDE_CODE comes from .env. The extensions list above can't read .env, so the
+        // extension is installed through the VS Code server already running in the container.
+        "claude": "[ \"$CLAUDE_CODE\" != true ] || \"$(ls -td ~/.vscode-server/bin/*/ | head -1)bin/code-server\" --install-extension Anthropic.claude-code"
+    },
     "customizations": {
         "vscode": {
             "extensions": [
@@ -13,8 +18,7 @@
                 "ms-python.vscode-pylance",
                 "ms-vscode.cmake-tools",
                 "ms-vscode.cpp-devtools",
-                "nonanonno.vscode-ros2",
-                "Anthropic.claude-code"
+                "nonanonno.vscode-ros2"
             ],
             "settings": {
                 "python.analysis.extraPaths": [

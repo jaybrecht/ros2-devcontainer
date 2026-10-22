@@ -44,6 +44,11 @@ Uncomment one `COMPOSE_FILE` line from `.env.example`:
 
 The separator is `:` on Linux and in WSL, and `;` when you run from PowerShell.
 
+Set `CLAUDE_CODE=true` to use Claude Code in the container. The container's
+`postCreateCommand` then installs the VS Code extension. The login is kept in a
+Docker volume shared by every workspace on the machine, so you sign in once. That
+volume is mounted either way, but nothing uses it when `CLAUDE_CODE=false`.
+
 On Linux, set `USER_UID`/`USER_GID` to the output of `id -u`/`id -g`. Files
 created in the container are then owned by you on the host, not by root. On
 Windows, leave them at 1000.

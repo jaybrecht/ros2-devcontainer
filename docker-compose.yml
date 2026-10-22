@@ -9,10 +9,13 @@ services:
         USER_GID: ${USER_GID:-1000}
     network_mode: host
     environment:
+      # Read by postCreateCommand, which installs the Claude Code extension if true.
+      - CLAUDE_CODE=${CLAUDE_CODE:-false}
       # Keeps all Claude Code state, including ~/.claude.json, in the volume.
       - CLAUDE_CONFIG_DIR=/home/dev/.claude
     volumes:
       - ./src:/ws/src
+      # Mounted either way (compose can't make it conditional); unused without Claude.
       - claude-config:/home/dev/.claude
     command: sleep infinity
 
