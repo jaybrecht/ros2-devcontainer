@@ -40,7 +40,7 @@ Uncomment one `COMPOSE_FILE` line from `.env.example`:
 | Linux + GPU     | `...:compose/linux.yml:compose/gpu.yml` |
 | Windows         | `docker-compose.yml:compose/windows.yml`|
 | Windows + GPU   | `...:compose/windows.yml:compose/gpu.yml` |
-| + Isaac Sim     | append `:compose/isaacsim.yml` and set `ISAACSIM_ROOT` |
+| + Isaac Sim     | append `:compose/isaacsim.yml` (needs GPU; Linux only) |
 
 The separator is `:` on Linux and in WSL, and `;` when you run from PowerShell.
 
@@ -66,7 +66,7 @@ After you change `.env`, run `docker compose build && docker compose up -d --for
 | `compose/linux.yml`         | GUI through the host X server.                       |
 | `compose/windows.yml`       | GUI through WSLg.                                    |
 | `compose/gpu.yml`           | NVIDIA GPU passthrough.                              |
-| `compose/isaacsim.yml`      | Host Isaac Sim mounted at `/isaac-sim`, with caches. |
+| `compose/isaacsim.yml`      | Builds on NVIDIA's Isaac Sim image; cache volumes.  |
 | `colcon-defaults.yaml`      | Makes `colcon build` use `--merge-install --symlink-install`. |
 | `.devcontainer/`            | VS Code Dev Containers config, Pylance path script.  |
 
@@ -120,42 +120,39 @@ Install the **Dev Containers** extension, open this folder, and run
 `devcontainer.json`.
 
 Pylance never sources `setup.bash`, so it only finds what's in
-`python.analysis.extraPaths`. The default list covers ROS and every interface
-package you build, since merge-install puts them all in
-`/ws/install/lib/python3.12/site-packages/`. It doesn't cover `ament_python`
-packages, which symlink-install leaves in `src/`.
+`python.analysis.extraPaths`. `pylance-paths` (`.devcontainer/pylance_paths.py`,
+copied into the image) writes that list to `src/.vscode/settings.json`:
 
-Add those per project in `src/.vscode/settings.json`. It's on the host, so it
-survives rebuilds, and it isn't tracked by this repo. It replaces the whole
-list, so keep the two default entries:
+- ROS, and every interface package you build (merge-install puts them all in
+  `/ws/install/lib/python3.12/site-packages/`).
+- The source folder of each `ament_python` package in `src/`. symlink-install
+  only leaves an egg-link for those in `install/`, which Pylance doesn't follow.
+- Isaac Sim, when it's in the image (see below).
 
-```json
-{
-    "python.analysis.extraPaths": [
-        "/opt/ros/jazzy/lib/python3.12/site-packages/",
-        "/ws/install/lib/python3.12/site-packages/",
-        "/ws/src/<package>/"
-    ]
-}
-```
+It runs when the container is created (or rebuilt). To pick up a package added to
+`src/` since then, rebuild or run `pylance-paths`, then **Python: Restart Language
+Server**. Other entries you add to the list yourself are kept.
 
 After changing `devcontainer.json`, run **Dev Containers: Rebuild Container**.
 
 ## Isaac Sim
 
-Isaac Sim is installed on the host and mounted into the container at
-`/isaac-sim`, where it runs. Set `ISAACSIM_ROOT` in `.env` and add
-`compose/gpu.yml` and `compose/isaacsim.yml` to `COMPOSE_FILE`. In the container:
+Add `compose/gpu.yml` and `compose/isaacsim.yml` to `COMPOSE_FILE`. The image is
+then built on NVIDIA's Isaac Sim image (`nvcr.io/nvidia/isaac-sim`, ~20 GB, pulled
+once per machine) with ROS Jazzy added, instead of `ros:jazzy-ros-base`. Isaac Sim
+is at `/isaac-sim`. Set `ISAACSIM_VERSION` in `.env` to pick another release.
+Using it means accepting NVIDIA's Isaac Sim license (`/isaac-sim/LICENSE.txt`).
+In the container:
 
 ```bash
 jazzy
 /isaac-sim/python.sh /ws/src/<pkg>/<script>.py
 ```
 
-Isaac Sim uses the container's ROS Jazzy (it's always sourced), so your own
-message packages work once the workspace is sourced. The shader caches
-(`~/.cache/ov` and friends) are mounted from the host so they survive rebuilds;
-those directories must exist on the host before the container starts.
+With ROS sourced (`jazzy`), Isaac Sim uses the container's ROS Jazzy, so your own
+message packages work once the workspace is sourced. Compiled shaders and Python
+bytecode are kept in Docker volumes shared by every workspace on the machine, so
+only the first launch after a version change is slow (~3 minutes instead of ~20 s).
 
 To check the setup, run the smoke test (add `--gui` for the window):
 
@@ -174,15 +171,8 @@ or without `compose/linux.yml`), use the EGL one instead:
 `Failed to initialize NVML: Unknown Error`, the container lost GPU access after a
 systemd reload on the host (a known NVIDIA Container Toolkit issue); recreate it.
 
-Isaac Sim ships `.vscode/settings.json` listing every extension folder. On
-container creation, `isaacsim-vscode-paths` (`.devcontainer/isaacsim_vscode_paths.py`,
-copied into the image) rewrites those to `/isaac-sim/...` and merges them into
-`src/.vscode/settings.json`, keeping your other entries. It leaves out the few
-extensions (e.g. `isaacsim.ros2.control`) that would otherwise break `isaacsim.*`
-imports in Pylance. For the same reason, write
+Isaac Sim ships `.vscode/settings.json` listing every extension folder.
+`pylance-paths` (see [VS Code](#vs-code)) rewrites those to `/isaac-sim/...` for
+Pylance. It leaves out the few extensions (e.g. `isaacsim.ros2.control`) that
+would otherwise break `isaacsim.*` imports. For the same reason, write
 `from isaacsim.simulation_app import SimulationApp`, not `from isaacsim import ...`.
-Re-run it after upgrading Isaac Sim, then restart the Python language server:
-
-```bash
-isaacsim-vscode-paths
-```

@@ -4,7 +4,7 @@
 *
 !zshrc
 !colcon-defaults.yaml
-!.devcontainer/isaacsim_vscode_paths.py
+!.devcontainer/pylance_paths.py
 !src/.gitkeep
 !src/**/package.xml
 !src/**/requirements.txt

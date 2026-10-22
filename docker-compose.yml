@@ -4,6 +4,9 @@ services:
   ros:
     build:
       context: .
+      # RUN steps use the host's network and DNS, like the container itself
+      # (network_mode below), so builds don't depend on Docker's bridge DNS.
+      network: host
       args:
         USER_UID: ${USER_UID:-1000}
         USER_GID: ${USER_GID:-1000}

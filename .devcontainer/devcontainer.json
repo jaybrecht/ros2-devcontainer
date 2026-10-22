@@ -5,9 +5,9 @@
     "service": "ros",
     "workspaceFolder": "/ws/src",
     "postCreateCommand": {
-        // Adds Isaac Sim paths to src/.vscode/settings.json when /isaac-sim is mounted.
-        "isaacsim": "isaacsim-vscode-paths",
-        // CLAUDE_CODE comes from .env. The extensions list above can't read .env, so the
+        // Writes Pylance's extraPaths to src/.vscode/settings.json.
+        "pylance": "pylance-paths",
+        // CLAUDE_CODE comes from .env. The extensions list below can't read .env, so the
         // extension is installed through the VS Code server already running in the container.
         "claude": "[ \"$CLAUDE_CODE\" != true ] || \"$(ls -td ~/.vscode-server/bin/*/ | head -1)bin/code-server\" --install-extension Anthropic.claude-code"
     },

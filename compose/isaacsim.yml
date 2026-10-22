@@ -1,15 +1,15 @@
-# Host Isaac Sim install, run in the container with /isaac-sim/python.sh.
-# Needs compose/gpu.yml too. Pylance also uses this mount to resolve
-# isaacsim/omni/pxr imports.
+# Isaac Sim, from NVIDIA's image (nvcr.io/nvidia/isaac-sim) with ROS added; see the
+# Dockerfile. Run it in the container with /isaac-sim/python.sh. Needs
+# compose/gpu.yml too. Set ISAACSIM_VERSION in .env to change the version.
 #
-# Isaac Sim writes to kit/cache, kit/data and kit/logs inside its install, so the
-# mount is read-write. The cache dirs (compiled shaders etc.) live on the host so
-# they survive container rebuilds. They must exist on the host first, or Docker
-# creates them owned by root.
 # ipc: host gives the container the host's /dev/shm instead of Docker's 64 MB
 # default, which Isaac Sim and Fast DDS shared memory need.
 services:
   ros:
+    build:
+      args:
+        BASE: isaacsim
+        ISAACSIM_VERSION: ${ISAACSIM_VERSION:-6.2.0}
     ipc: host
     # isaacsim.ros2.control puts Isaac's own Jazzy prefixes ahead of /opt/ros/jazzy at
     # runtime, so pluginlib loads Isaac's plugins (e.g. libsdformat_urdf_plugin.so). Their
@@ -18,11 +18,21 @@ services:
     # libraries still win wherever both have one.
     environment:
       LD_LIBRARY_PATH: /isaac-sim/exts/isaacsim.ros2.control/jazzy/lib:/isaac-sim/exts/isaacsim.ros2.core/jazzy/lib
+      # /isaac-sim isn't writable by the container user, so Python keeps its
+      # bytecode cache in ~/.cache (a volume, below). Runtime only: set at build
+      # time, root's Python runs would create /home/dev before the user exists.
+      PYTHONPYCACHEPREFIX: /home/dev/.cache/pycache
     devices:
       - /dev/nvidia-modeset
+    # Compiled shaders and Python bytecode, kept across rebuilds. Without them the
+    # first launch after a rebuild takes ~3 minutes instead of ~20 s.
     volumes:
-      - ${ISAACSIM_ROOT:?set ISAACSIM_ROOT in .env}:/isaac-sim
-      - ${HOME}/.cache/ov:/home/dev/.cache/ov
-      - ${HOME}/.local/share/ov:/home/dev/.local/share/ov
-      - ${HOME}/.nvidia-omniverse:/home/dev/.nvidia-omniverse
-      - ${HOME}/.nv:/home/dev/.nv
+      - isaacsim-kit-cache:/isaac-sim/kit/cache
+      - isaacsim-user-cache:/home/dev/.cache
+
+volumes:
+  # Fixed names (no project prefix), so every workspace on this machine shares them.
+  isaacsim-kit-cache:
+    name: isaacsim-${ISAACSIM_VERSION:-6.2.0}-kit-cache
+  isaacsim-user-cache:
+    name: isaacsim-${ISAACSIM_VERSION:-6.2.0}-user-cache
