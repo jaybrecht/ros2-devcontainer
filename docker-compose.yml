@@ -4,9 +4,10 @@ services:
   ros:
     build:
       context: .
-      # RUN steps use the host's network and DNS, like the container itself
-      # (network_mode below), so builds don't depend on Docker's bridge DNS.
-      network: host
+      # BUILD_NETWORK=host in .env makes RUN steps use the host's network and DNS, like
+      # the container itself (network_mode below), for hosts where Docker's bridge DNS
+      # fails. Newer Compose refuses that unless granted, so it's opt-in.
+      network: ${BUILD_NETWORK:-default}
       args:
         USER_UID: ${USER_UID:-1000}
         USER_GID: ${USER_GID:-1000}
