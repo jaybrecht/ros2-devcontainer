@@ -1,0 +1,12 @@
+# NVIDIA GPU on Linux through CDI. Unlike compose/gpu.yml, the GPU survives a
+# `systemctl daemon-reload` on the host (with gpu.yml, nvidia-smi then fails with
+# "Failed to initialize NVML: Unknown Error"). Needs NVIDIA Container Toolkit >= 1.14
+# and Docker >= 25. Run once per host, and again after each NVIDIA driver upgrade:
+#   sudo nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml
+# Without it the container fails to start with "unresolvable CDI devices".
+services:
+  ros:
+    environment:
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    devices:
+      - nvidia.com/gpu=all

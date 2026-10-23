@@ -1,6 +1,6 @@
 # Isaac Sim, from NVIDIA's image (nvcr.io/nvidia/isaac-sim) with ROS added; see the
 # Dockerfile. Run it in the container with /isaac-sim/python.sh. Needs
-# compose/gpu.yml too. Set ISAACSIM_VERSION in .env to change the version.
+# compose/gpu-cdi.yml (or gpu.yml) too. Set ISAACSIM_VERSION in .env to change the version.
 #
 # ipc: host gives the container the host's /dev/shm instead of Docker's 64 MB
 # default, which Isaac Sim and Fast DDS shared memory need.

@@ -8,7 +8,9 @@ on the host and build and test in the container without rebuilding the image.
 
 - **Linux:** Docker Engine and the Compose plugin (`docker compose version`). For a
   GPU, also the NVIDIA driver and the
-  [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html).
+  [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
+  (>= 1.14, with Docker >= 25). Then generate its CDI spec once, and again after
+  each driver upgrade: `sudo nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml`.
 - **Windows 11:** Docker Desktop with the WSL2 backend. For a GPU, a current NVIDIA
   Windows driver (no toolkit needed). Clone this repo **inside WSL2** (for example
   `~/` in Ubuntu), not on `C:\`. Bind mounts from the Windows filesystem are very
@@ -37,7 +39,7 @@ Uncomment one `COMPOSE_FILE` line from `.env.example`:
 | Option          | Files                                   |
 | --------------- | --------------------------------------- |
 | Linux           | `docker-compose.yml:compose/linux.yml`  |
-| Linux + GPU     | `...:compose/linux.yml:compose/gpu.yml` |
+| Linux + GPU     | `...:compose/linux.yml:compose/gpu-cdi.yml` |
 | Windows         | `docker-compose.yml:compose/windows.yml`|
 | Windows + GPU   | `...:compose/windows.yml:compose/gpu.yml` |
 | + Isaac Sim     | append `:compose/isaacsim.yml` (needs GPU; Linux only) |
@@ -65,7 +67,8 @@ After you change `.env`, run `docker compose build && docker compose up -d --for
 | `docker-compose.yml`        | Base service: mount, networking, build args.         |
 | `compose/linux.yml`         | GUI through the host X server.                       |
 | `compose/windows.yml`       | GUI through WSLg.                                    |
-| `compose/gpu.yml`           | NVIDIA GPU passthrough.                              |
+| `compose/gpu-cdi.yml`       | NVIDIA GPU on Linux, through CDI.                    |
+| `compose/gpu.yml`           | NVIDIA GPU on Windows (lost on Linux after a systemd reload). |
 | `compose/isaacsim.yml`      | Builds on NVIDIA's Isaac Sim image; cache volumes.  |
 | `colcon-defaults.yaml`      | Makes `colcon build` use `--merge-install --symlink-install`. |
 | `.devcontainer/`            | VS Code Dev Containers config, Pylance path script.  |
@@ -137,7 +140,7 @@ After changing `devcontainer.json`, run **Dev Containers: Rebuild Container**.
 
 ## Isaac Sim
 
-Add `compose/gpu.yml` and `compose/isaacsim.yml` to `COMPOSE_FILE`. The image is
+Add `compose/gpu-cdi.yml` and `compose/isaacsim.yml` to `COMPOSE_FILE`. The image is
 then built on NVIDIA's Isaac Sim image (`nvcr.io/nvidia/isaac-sim`, ~20 GB, pulled
 once per machine) with ROS Jazzy added, instead of `ros:jazzy-ros-base`. Isaac Sim
 is at `/isaac-sim`. Set `ISAACSIM_VERSION` in `.env` to pick another release.
@@ -169,7 +172,10 @@ The NVIDIA runtime doesn't add a Vulkan ICD file, so the image adds one for
 or without `compose/linux.yml`), use the EGL one instead:
 `export VK_DRIVER_FILES=$NVIDIA_EGL_ICD`. If `nvidia-smi` in the container fails with
 `Failed to initialize NVML: Unknown Error`, the container lost GPU access after a
-systemd reload on the host (a known NVIDIA Container Toolkit issue); recreate it.
+systemd reload on the host (a known NVIDIA Container Toolkit issue). That happens
+with `compose/gpu.yml`; switch to `compose/gpu-cdi.yml` and rebuild. On hosts where
+config management (e.g. Chef) runs `systemctl daemon-reload` regularly, it happens
+every run.
 
 Isaac Sim ships `.vscode/settings.json` listing every extension folder.
 `pylance-paths` (see [VS Code](#vs-code)) rewrites those to `/isaac-sim/...` for
